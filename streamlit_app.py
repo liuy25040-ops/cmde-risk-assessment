@@ -1,90 +1,6 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
 
-# =====================================================
-# Page Config
-# =====================================================
-st.set_page_config(
-    page_title="Environmental Risk Assessment System for Coal Mining and Washing Enterprises",
-    page_icon="🌍",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
-# =====================================================
-# CSS（SCI风格）
-# =====================================================
-st.markdown("""
-<style>
-.main{
-    padding-top:1rem;
-}
-.block-container{
-    padding-top:1rem;
-    padding-bottom:2rem;
-    max-width:1450px;
-}
-/* Title */
-.big-title{
-    font-size:40px;
-    font-weight:700;
-    color:#163A5F;
-    margin-bottom:0px;
-}
-.subtitle{
-    color:#666666;
-    font-size:17px;
-    margin-top:-10px;
-    margin-bottom:20px;
-}
-/* Section */
-.section-title{
-    font-size:26px;
-    font-weight:700;
-    color:#184A73;
-    margin-top:20px;
-    margin-bottom:15px;
-}
-/* Card */
-.card{
-    background:white;
-    padding:18px;
-    border-radius:15px;
-    border:1px solid #E6E9EF;
-    box-shadow:0 3px 10px rgba(0,0,0,.05);
-}
-/* Result Card */
-.result-card{
-    background:#F8FBFF;
-    border-left:6px solid #2E86DE;
-    padding:15px;
-    border-radius:10px;
-}
-/* Button */
-.stButton>button{
-    width:100%;
-    height:52px;
-    border-radius:10px;
-    font-size:18px;
-    font-weight:700;
-}
-/* Metric */
-[data-testid="metric-container"]{
-    border:1px solid #EEEEEE;
-    padding:15px;
-    border-radius:12px;
-    background:white;
-}
-/* Divider */
-hr{
-    margin-top:25px;
-    margin-bottom:25px;
-}
-</style>
-""", unsafe_allow_html=True)
-
+# ===================== 1. 完全沿用你Flask内全部指标配置、权重、分级 =====================
 indicator_config = [
     # Source Dimension
     {
@@ -443,16 +359,14 @@ risk_level_rules = [
     }
 ]
 
-
-# ===================== 核心计算逻辑 =====================
+# ===================== 2. 核心计算逻辑 1:1复刻你的Flask函数 =====================
 def calculate_indicator_score(indicator, input_value):
-    # 已移除数值强制截断，输入值可超出原范围
+    input_value = max(indicator['min'], min(input_value, indicator['max']))
     if indicator['direction'] == 'Positive':
         score = (input_value - indicator['min']) / (indicator['max'] - indicator['min'])
     else:
         score = (indicator['max'] - input_value) / (indicator['max'] - indicator['min'])
     return score
-
 
 def get_risk_level(score, risk_type):
     for rule in risk_level_rules:
@@ -462,7 +376,6 @@ def get_risk_level(score, risk_type):
                     return level["level"]
     return "Unknown"
 
-
 def calculate_risk(input_dict):
     dimension_scores = {"Source": 0, "Pathway": 0, "Receptor": 0}
     for ind in indicator_config:
@@ -470,8 +383,8 @@ def calculate_risk(input_dict):
         val = input_dict[name]
         single_score = calculate_indicator_score(ind, val)
         dimension_scores[ind["dimension"]] += single_score * ind["weight"]
-
     comp_score = sum(dimension_scores.values())
+
     res = {}
     res["Source_score"] = round(dimension_scores["Source"], 6)
     res["Source_level"] = get_risk_level(dimension_scores["Source"], "Source")
@@ -492,19 +405,18 @@ def calculate_risk(input_dict):
     res["Dominant_score"] = round(max_s, 6)
     return res
 
-
-# ===================== Streamlit 页面布局 =====================
-st.set_page_config(page_title="Environmental Risk Assessment System for Coal Mining and Washing Enterprises",
-                   layout="wide")
+# ===================== 3. Streamlit 页面布局（学术简洁，对标参考文献） =====================
+# 宽屏布局，和文献网页一致
+st.set_page_config(page_title="Pollution Risk Assessment System for Coal Mining and Dressing Enterprises", layout="wide")
 
 # 主标题
-st.title("Environmental Risk Assessment System for Coal Mining and Washing Enterprises")
+st.title("Pollution Risk Assessment System for Coal Mining and Dressing Enterprises")
 st.caption("Quantitative Pollution Risk Evaluation Tool")
 
-# 温馨提示框
+# 你指定的 Warm Prompt 温馨提示框
 st.info("""
 **Warm Prompt**
-1. This system adopts official national data of coal mining and washing enterprises collected in 2025 to assess the current pollution risk status of enterprises.
+1. This system adopts official national data of coal mining and dressing enterprises collected in 2025 to assess the current pollution risk status of enterprises.
 2. All evaluation indicators are divided into three independent modules: Source, Pathway and Receptor.
 3. The comprehensive weight of each indicator is calculated by the coupled AHP-CRITIC method and solidified in the backend program. Users only need to fill in parameters to automatically obtain risk scores and risk grades.
 4. Please fill in all input boxes before clicking the calculation button. If the information is uncertain, please enter 0.
@@ -531,6 +443,8 @@ for item in source_list:
         else:
             real_val = st.number_input(
                 label=f"{item['name']} ({item['unit']})",
+                min_value=float(item["min"]),
+                max_value=float(item["max"]),
                 value=float(item["min"]),
                 step=0.01
             )
@@ -553,6 +467,8 @@ for item in path_list:
         else:
             real_val = st.number_input(
                 label=f"{item['name']} ({item['unit']})",
+                min_value=float(item["min"]),
+                max_value=float(item["max"]),
                 value=float(item["min"]),
                 step=0.01
             )
@@ -575,6 +491,8 @@ for item in recep_list:
         else:
             real_val = st.number_input(
                 label=f"{item['name']} ({item['unit']})",
+                min_value=float(item["min"]),
+                max_value=float(item["max"]),
                 value=float(item["min"]),
                 step=0.01
             )
@@ -586,7 +504,7 @@ st.divider()
 # 计算按钮
 calc_button = st.button("Calculate Risk Score & Risk Level", type="primary")
 
-# 结果展示区域
+# 结果展示区域（点击按钮自动渲染）
 if calc_button:
     with st.spinner("Calculating risk index, please wait..."):
         res_data = calculate_risk(input_storage)
@@ -606,5 +524,4 @@ if calc_button:
         st.metric("Comprehensive Risk Score", value=res_data["Comprehensive_score"])
         st.markdown(f"Risk Level: **{res_data['Comprehensive_level']}**")
 
-    st.info(
-        f"**Dominant Risk Dimension**: {res_data['Dominant_dimension']} Dimension, Dimension Score = {res_data['Dominant_score']}")
+    st.info(f"**Dominant Risk Dimension**: {res_data['Dominant_dimension']} Dimension, Dimension Score = {res_data['Dominant_score']}")
